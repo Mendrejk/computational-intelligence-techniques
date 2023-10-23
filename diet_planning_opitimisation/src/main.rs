@@ -117,18 +117,21 @@ impl<'a> FitnessFunction<Selection, i64> for &'a Problem {
             });
 
         let nil = -213742000;
-        return if total_calories.abs_diff(self.target_calories) > 250 {
-            nil
-        } else if total_carbs.abs_diff(self.target_carbs) > 25 {
-            nil
-        } else if total_fats.abs_diff(self.target_fats) > 75 {
-            nil
-        } else if total_proteins.abs_diff(self.target_proteins) > 50 {
-            nil
-        } else {
-            // println!("{}", -total_price);
-            -total_price
-        };
+        let mut sum: i64 = 0;
+        if total_calories.abs_diff(self.target_calories) > 200 {
+            sum += nil;
+        }
+        if total_carbs.abs_diff(self.target_carbs) > 25 {
+            sum += nil
+        }
+        if total_fats.abs_diff(self.target_fats) > 75 {
+            sum += nil
+        }
+        if total_proteins.abs_diff(self.target_proteins) > 50 {
+            sum += nil
+        }
+
+        sum - total_price
     }
 
     fn average(&self, values: &[i64]) -> i64 {
@@ -140,7 +143,7 @@ impl<'a> FitnessFunction<Selection, i64> for &'a Problem {
     }
 
     fn lowest_possible_fitness(&self) -> i64 {
-        -213742000
+        -2137420000
     }
 }
 
