@@ -56,10 +56,10 @@ impl AsPhenotype for Selection {
             .collect();
 
         let total_calories = dishes.iter().map(|(dish, count)| (dish.calories * count) as u64).sum::<u64>();
-        let price = dishes.iter().map(|(dish, count)| (dish.price as u32 * count) as u64).sum::<u64>();
-        let total_carbs = dishes.iter().map(|(dish, count)| (dish.carbs as u32 * count) as u64).sum::<u64>();
-        let total_fats = dishes.iter().map(|(dish, count)| (dish.fats as u32 * count) as u64).sum::<u64>();
-        let total_proteins = dishes.iter().map(|(dish, count)| (dish.proteins as u32 * count) as u64).sum::<u64>();
+        let price = dishes.iter().map(|(dish, count)| (dish.price * count) as u64).sum::<u64>();
+        let total_carbs = dishes.iter().map(|(dish, count)| (dish.carbs * count) as u64).sum::<u64>();
+        let total_fats = dishes.iter().map(|(dish, count)| (dish.fats * count) as u64).sum::<u64>();
+        let total_proteins = dishes.iter().map(|(dish, count)| (dish.proteins * count) as u64).sum::<u64>();
 
         Diet {
             dishes,
@@ -116,7 +116,7 @@ impl<'a> FitnessFunction<Selection, i64> for &'a Problem {
                 (total_calories + calories, total_carbs + carbs, total_fats + fats, total_proteins + proteins, total_price + price)
             });
 
-        let nil = -213742000;
+        let nil = -9999999999;
         let mut sum: i64 = 0;
         if total_calories.abs_diff(self.target_calories) > 200 {
             sum += nil;
@@ -142,14 +142,102 @@ impl<'a> FitnessFunction<Selection, i64> for &'a Problem {
         0
     }
 
-    fn lowest_possible_fitness(&self) -> i64 {
-        -2137420000
-    }
+    fn lowest_possible_fitness(&self) -> i64 { -9999999999 }
 }
 
 fn main() {
-    // a list of 15 dishes with polish zloty * 10 as price
-    let all_dishes: AllDishes = vec![
+    run(get_dishes());
+}
+
+fn run(all_dishes: AllDishes) {
+    let problem = Problem::new(2250, 275, 50, 120, all_dishes);
+
+    let initial_population: Population<Selection> = build_population()
+        .with_genome_builder(ValueEncodedGenomeBuilder::new(
+            problem.all_dishes.dishes.len(), 0, 5,
+        ))
+        .of_size(150)
+        .uniform_at_random();
+
+    let mut diet_sim = simulate(
+        genetic_algorithm()
+            .with_evaluation(&problem)
+            .with_selection(MaximizeSelector::new(0.85, 12))
+            // .with_selection(  RouletteWheelSelector::new(0.85, 12))
+            .with_crossover(SinglePointCrossBreeder::new())
+            .with_mutation(RandomValueMutator::new(0.1, 0, 5))
+            .with_reinsertion(ElitistReinserter::new(&problem, false, 0.85))
+            // .with_reinsertion(UniformReinserter::new(0.85))
+            .with_initial_population(initial_population)
+            .build(),
+    )
+        .until(GenerationLimit::new(1000))
+        .build();
+
+    'sim: loop {
+        let result = diet_sim.step();
+
+        match result {
+            Ok(SimResult::Intermediate(step)) => {
+                // println!("{:?}", &step.result.evaluated_population);
+                let evaluated_population = step.result.evaluated_population;
+                let best_solution = step.result.best_solution;
+                println!(
+                    "step: generation: {}, average_fitness: {}, \
+                     best fitness: {}, duration: {}, processing_time: {}",
+                    step.iteration,
+                    evaluated_population.average_fitness(),
+                    best_solution.solution.fitness,
+                    step.duration.fmt(),
+                    step.processing_time.fmt(),
+                );
+                let diet = best_solution
+                    .solution
+                    .genome
+                    .as_diet(&problem.all_dishes);
+                println!(
+                    "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
+                    diet.dishes.len(),
+                    diet.total_calories,
+                    diet.price,
+                );
+            }
+            Ok(SimResult::Final(step, processing_time, duration, stop_reason)) => {
+                let best_solution = step.result.best_solution;
+                println!("{}", stop_reason);
+                println!(
+                    "Final result after {}: generation: {}, \
+                     best solution with fitness {} found in generation {}, processing_time: {}",
+                    duration.fmt(),
+                    step.iteration,
+                    best_solution.solution.fitness,
+                    best_solution.generation,
+                    processing_time.fmt(),
+                );
+                let diet = best_solution
+                    .solution
+                    .genome
+                    .as_diet(&problem.all_dishes);
+                println!(
+                    "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
+                    diet.dishes.len(),
+                    diet.total_calories,
+                    diet.price,
+                );
+                println!("{:?}", diet.dishes.into_iter().map(|(dish, count)| (dish.name, count)).collect::<Vec<(String, u32)>>());
+                break 'sim;
+            }
+            Err(error) => {
+                println!("{}", error);
+                break 'sim;
+            }
+        }
+    }
+}
+
+fn get_dishes() -> AllDishes {
+// a list of 15 dishes with polish zloty * 10 as price
+    vec![
         Dish {
             name: "potatoes, 100g".into(),
             calories: 66,
@@ -270,89 +358,5 @@ fn main() {
             fats: 0,
             proteins: 0,
         },
-    ].into();
-
-    let problem = Problem::new(2250, 275, 50, 120, all_dishes);
-
-    let initial_population: Population<Selection> = build_population()
-        .with_genome_builder(ValueEncodedGenomeBuilder::new(
-            problem.all_dishes.dishes.len(), 0, 10,
-        ))
-        .of_size(150)
-        .uniform_at_random();
-
-    let mut diet_sim = simulate(
-        genetic_algorithm()
-            .with_evaluation(&problem)
-            .with_selection(MaximizeSelector::new(0.85, 12))
-            // .with_selection(  RouletteWheelSelector::new(0.85, 12))
-            .with_crossover(SinglePointCrossBreeder::new())
-            .with_mutation(RandomValueMutator::new(0.1, 0, 10))
-            .with_reinsertion(ElitistReinserter::new(&problem, false, 0.85))
-            // .with_reinsertion(UniformReinserter::new(0.85))
-            .with_initial_population(initial_population)
-            .build(),
-    )
-        .until(GenerationLimit::new(1000))
-        .build();
-
-    'sim: loop {
-        let result = diet_sim.step();
-
-        match result {
-            Ok(SimResult::Intermediate(step)) => {
-                // println!("{:?}", &step.result.evaluated_population);
-                let evaluated_population = step.result.evaluated_population;
-                let best_solution = step.result.best_solution;
-                println!(
-                    "step: generation: {}, average_fitness: {}, \
-                     best fitness: {}, duration: {}, processing_time: {}",
-                    step.iteration,
-                    evaluated_population.average_fitness(),
-                    best_solution.solution.fitness,
-                    step.duration.fmt(),
-                    step.processing_time.fmt(),
-                );
-                let diet = best_solution
-                    .solution
-                    .genome
-                    .as_diet(&problem.all_dishes);
-                println!(
-                    "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
-                    diet.dishes.len(),
-                    diet.total_calories,
-                    diet.price,
-                );
-            }
-            Ok(SimResult::Final(step, processing_time, duration, stop_reason)) => {
-                let best_solution = step.result.best_solution;
-                println!("{}", stop_reason);
-                println!(
-                    "Final result after {}: generation: {}, \
-                     best solution with fitness {} found in generation {}, processing_time: {}",
-                    duration.fmt(),
-                    step.iteration,
-                    best_solution.solution.fitness,
-                    best_solution.generation,
-                    processing_time.fmt(),
-                );
-                let diet = best_solution
-                    .solution
-                    .genome
-                    .as_diet(&problem.all_dishes);
-                println!(
-                    "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
-                    diet.dishes.len(),
-                    diet.total_calories,
-                    diet.price,
-                );
-                println!("{:?}", diet.dishes.into_iter().map(|(dish, count)| (dish.name, count)).collect::<Vec<(String, u32)>>());
-                break 'sim;
-            }
-            Err(error) => {
-                println!("{}", error);
-                break 'sim;
-            }
-        }
-    }
+    ].into()
 }
