@@ -1,5 +1,9 @@
+mod dynamic_selector;
+
 use genevo::{operator::prelude::*, population::*, prelude::*, types::fmt::Display};
+use genevo::operator::{GeneticOperator, SelectionOp};
 use smallvec::SmallVec;
+use crate::dynamic_selector::{GenevoSelector, DynamicSelector};
 
 #[derive(Debug, Clone)]
 struct Dish {
@@ -138,10 +142,12 @@ impl<'a, 'b> FitnessFunction<Selection, i64> for &'b Problem<'a> {
 fn main() {
     let dishes = get_dishes();
 
-    run(&dishes);
+    let selector = DynamicSelector::new(GenevoSelector::Maximize(MaximizeSelector::new(0.85, 12)));
+
+    run(selector, &dishes);
 }
 
-fn run(all_dishes: &Vec<Dish>) {
+fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>) {
     let problem = Problem::new(2250, 275, 50, 120, all_dishes);
 
     let initial_population: Population<Selection> = build_population()
@@ -154,8 +160,7 @@ fn run(all_dishes: &Vec<Dish>) {
     let mut diet_sim = simulate(
         genetic_algorithm()
             .with_evaluation(&problem)
-            .with_selection(MaximizeSelector::new(0.85, 12))
-            // .with_selection(  RouletteWheelSelector::new(0.85, 12))
+            .with_selection(selector)
             .with_crossover(SinglePointCrossBreeder::new())
             .with_mutation(RandomValueMutator::new(0.1, 0, 5))
             .with_reinsertion(ElitistReinserter::new(&problem, false, 0.85))
@@ -172,8 +177,8 @@ fn run(all_dishes: &Vec<Dish>) {
         match result {
             Ok(SimResult::Intermediate(step)) => {
                 // println!("{:?}", &step.result.evaluated_population);
-                let evaluated_population = step.result.evaluated_population;
-                let best_solution = step.result.best_solution;
+                // let evaluated_population = step.result.evaluated_population;
+                // let best_solution = step.result.best_solution;
                 // println!(
                 //     "step: generation: {}, average_fitness: {}, \
                 //      best fitness: {}, duration: {}, processing_time: {}",
@@ -183,10 +188,10 @@ fn run(all_dishes: &Vec<Dish>) {
                 //     step.duration.fmt(),
                 //     step.processing_time.fmt(),
                 // );
-                let diet = best_solution
-                    .solution
-                    .genome
-                    .as_diet(&problem.all_dishes);
+                // let diet = best_solution
+                //     .solution
+                //     .genome
+                //     .as_diet(&problem.all_dishes);
                 // println!(
                 //     "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
                 //     diet.dishes.len(),
@@ -350,5 +355,5 @@ fn get_dishes() -> Vec<Dish> {
             fats: 0,
             proteins: 0,
         },
-    ].into()
+    ]
 }
