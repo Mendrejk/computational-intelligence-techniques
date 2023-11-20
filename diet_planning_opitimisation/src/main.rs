@@ -11,16 +11,6 @@ struct Dish {
     proteins: u32,
 }
 
-#[derive(Debug, Clone)]
-struct AllDishes {
-    dishes: Vec<Dish>,
-}
-
-impl From<Vec<Dish>> for AllDishes {
-    fn from(items: Vec<Dish>) -> Self {
-        AllDishes { dishes: items }
-    }
-}
 
 /// The phenotype
 #[derive(Debug)]
@@ -38,17 +28,17 @@ type Selection = SmallVec<[u32; 16]>;
 
 /// How do the genes of the genotype show up in the phenotype
 trait AsPhenotype {
-    fn as_diet(&self, all_dishes: &AllDishes) -> Diet;
+    fn as_diet(&self, all_dishes: &Vec<Dish>) -> Diet;
 }
 
 impl AsPhenotype for Selection {
-    fn as_diet(&self, all_dishes: &AllDishes) -> Diet {
+    fn as_diet(&self, all_dishes: &Vec<Dish>) -> Diet {
         let dishes: Vec<(Dish, u32)> = self
             .into_iter()
             .enumerate()
             .filter_map(|(index, dish_count)| {
                 if *dish_count > 0 {
-                    Some((all_dishes.dishes[index].clone(), *dish_count))
+                    Some((all_dishes[index].clone(), *dish_count))
                 } else {
                     None
                 }
@@ -74,16 +64,16 @@ impl AsPhenotype for Selection {
 
 /// The problem definition
 #[derive(Debug, Clone)]
-struct Problem {
-    all_dishes: AllDishes,
+struct Problem<'a> {
+    all_dishes: &'a Vec<Dish>,
     target_calories: u64,
     target_carbs: u64,
     target_fats: u64,
     target_proteins: u64,
 }
 
-impl Problem {
-    pub fn new(target_calories: u64, target_carbs: u64, target_fats: u64, target_proteins: u64, all_dishes: AllDishes) -> Self {
+impl<'a> Problem<'a> {
+    pub fn new(target_calories: u64, target_carbs: u64, target_fats: u64, target_proteins: u64, all_dishes: &'a Vec<Dish>) -> Self {
         Self {
             all_dishes,
             target_calories,
@@ -95,14 +85,14 @@ impl Problem {
 }
 
 /// The fitness function for `Selection`
-impl<'a> FitnessFunction<Selection, i64> for &'a Problem {
+impl<'a, 'b> FitnessFunction<Selection, i64> for &'b Problem<'a> {
     fn fitness_of(&self, selection: &Selection) -> i64 {
         let (total_calories, total_carbs, total_fats, total_proteins, total_price) = selection
             .iter()
             .enumerate()
             .filter_map(|(index, dish_count)| {
                 if *dish_count > 0 {
-                    let dish = &self.all_dishes.dishes[index];
+                    let dish = &self.all_dishes[index];
                     Some(((u64::from(dish.calories * dish_count)),
                           (u64::from(dish.carbs * dish_count)),
                           (u64::from(dish.fats * dish_count)),
@@ -146,15 +136,17 @@ impl<'a> FitnessFunction<Selection, i64> for &'a Problem {
 }
 
 fn main() {
-    run(get_dishes());
+    let dishes = get_dishes();
+
+    run(&dishes);
 }
 
-fn run(all_dishes: AllDishes) {
+fn run(all_dishes: &Vec<Dish>) {
     let problem = Problem::new(2250, 275, 50, 120, all_dishes);
 
     let initial_population: Population<Selection> = build_population()
         .with_genome_builder(ValueEncodedGenomeBuilder::new(
-            problem.all_dishes.dishes.len(), 0, 5,
+            problem.all_dishes.len(), 0, 5,
         ))
         .of_size(150)
         .uniform_at_random();
@@ -235,7 +227,7 @@ fn run(all_dishes: AllDishes) {
     }
 }
 
-fn get_dishes() -> AllDishes {
+fn get_dishes() -> Vec<Dish> {
 // a list of 15 dishes with polish zloty * 10 as price
     vec![
         Dish {
