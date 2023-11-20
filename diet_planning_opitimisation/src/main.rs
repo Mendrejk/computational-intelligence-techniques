@@ -1,7 +1,6 @@
 mod dynamic_selector;
 
-use genevo::{operator::prelude::*, population::*, prelude::*, types::fmt::Display};
-use genevo::operator::{GeneticOperator, SelectionOp};
+use genevo::{operator::prelude::*, population::*, prelude::*};
 use smallvec::SmallVec;
 use crate::dynamic_selector::{GenevoSelector, DynamicSelector};
 
@@ -32,11 +31,11 @@ type Selection = SmallVec<[u32; 16]>;
 
 /// How do the genes of the genotype show up in the phenotype
 trait AsPhenotype {
-    fn as_diet(&self, all_dishes: &Vec<Dish>) -> Diet;
+    fn as_diet(&self, all_dishes: &[Dish]) -> Diet;
 }
 
 impl AsPhenotype for Selection {
-    fn as_diet(&self, all_dishes: &Vec<Dish>) -> Diet {
+    fn as_diet(&self, all_dishes: &[Dish]) -> Diet {
         let dishes: Vec<(Dish, u32)> = self
             .into_iter()
             .enumerate()
@@ -118,10 +117,10 @@ impl<'a, 'b> FitnessFunction<Selection, i64> for &'b Problem<'a> {
         if total_carbs.abs_diff(self.target_carbs) > 25 {
             sum += nil
         }
-        if total_fats.abs_diff(self.target_fats) > 75 {
+        if total_fats.abs_diff(self.target_fats) > 10 {
             sum += nil
         }
-        if total_proteins.abs_diff(self.target_proteins) > 50 {
+        if total_proteins.abs_diff(self.target_proteins) > 20 {
             sum += nil
         }
 
@@ -144,17 +143,19 @@ fn main() {
 
     let selector = DynamicSelector::new(GenevoSelector::Maximize(MaximizeSelector::new(0.85, 12)));
 
-    run(selector, &dishes);
+    for generation_count in [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000] {
+        run(selector.clone(), &dishes, generation_count);
+    }
 }
 
-fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>) {
+fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64) {
     let problem = Problem::new(2250, 275, 50, 120, all_dishes);
 
     let initial_population: Population<Selection> = build_population()
         .with_genome_builder(ValueEncodedGenomeBuilder::new(
-            problem.all_dishes.len(), 0, 5,
+            problem.all_dishes.len(), 0, 10,
         ))
-        .of_size(150)
+        .of_size(50)
         .uniform_at_random();
 
     let mut diet_sim = simulate(
@@ -168,7 +169,7 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>) {
             .with_initial_population(initial_population)
             .build(),
     )
-        .until(GenerationLimit::new(1000))
+        .until(GenerationLimit::new(generation_count))
         .build();
 
     'sim: loop {
@@ -201,27 +202,28 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>) {
             }
             Ok(SimResult::Final(step, processing_time, duration, stop_reason)) => {
                 let best_solution = step.result.best_solution;
-                println!("{}", stop_reason);
-                println!(
-                    "Final result after {}: generation: {}, \
-                     best solution with fitness {} found in generation {}, processing_time: {}",
-                    duration.fmt(),
-                    step.iteration,
-                    best_solution.solution.fitness,
-                    best_solution.generation,
-                    processing_time.fmt(),
-                );
-                let diet = best_solution
-                    .solution
-                    .genome
-                    .as_diet(&problem.all_dishes);
-                println!(
-                    "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
-                    diet.dishes.len(),
-                    diet.total_calories,
-                    diet.price,
-                );
-                println!("{:?}", diet.dishes.into_iter().map(|(dish, count)| (dish.name, count)).collect::<Vec<(String, u32)>>());
+                // println!("{}", stop_reason);
+                // println!(
+                //     "Final result after {}: generation: {}, \
+                //      best solution with fitness {} found in generation {}, processing_time: {}",
+                //     duration.fmt(),
+                //     step.iteration,
+                //     best_solution.solution.fitness,
+                //     best_solution.generation,
+                //     processing_time.fmt(),
+                // );
+                // let diet = best_solution
+                //     .solution
+                //     .genome
+                //     .as_diet(problem.all_dishes);
+                // println!(
+                //     "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
+                //     diet.dishes.len(),
+                //     diet.total_calories,
+                //     diet.price,
+                // );
+                // println!("{:?}", diet.dishes.into_iter().map(|(dish, count)| (dish.name, count)).collect::<Vec<(String, u32)>>());
+                println!("fitness: {}", best_solution.solution.fitness);
                 break 'sim;
             }
             Err(error) => {
