@@ -132,7 +132,7 @@ impl<'a, 'b> FitnessFunction<Selection, i64> for &'b Problem<'a> {
         0
     }
 
-    fn lowest_possible_fitness(&self) -> i64 { -9999999999 }
+    fn lowest_possible_fitness(&self) -> i64 { -99999999990 }
 }
 
 fn main() {
@@ -174,25 +174,25 @@ fn run(all_dishes: &Vec<Dish>) {
                 // println!("{:?}", &step.result.evaluated_population);
                 let evaluated_population = step.result.evaluated_population;
                 let best_solution = step.result.best_solution;
-                println!(
-                    "step: generation: {}, average_fitness: {}, \
-                     best fitness: {}, duration: {}, processing_time: {}",
-                    step.iteration,
-                    evaluated_population.average_fitness(),
-                    best_solution.solution.fitness,
-                    step.duration.fmt(),
-                    step.processing_time.fmt(),
-                );
+                // println!(
+                //     "step: generation: {}, average_fitness: {}, \
+                //      best fitness: {}, duration: {}, processing_time: {}",
+                //     step.iteration,
+                //     evaluated_population.average_fitness(),
+                //     best_solution.solution.fitness,
+                //     step.duration.fmt(),
+                //     step.processing_time.fmt(),
+                // );
                 let diet = best_solution
                     .solution
                     .genome
                     .as_diet(&problem.all_dishes);
-                println!(
-                    "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
-                    diet.dishes.len(),
-                    diet.total_calories,
-                    diet.price,
-                );
+                // println!(
+                //     "      Diet: number of unique dishes: {}, total calories: {}, total price: {}",
+                //     diet.dishes.len(),
+                //     diet.total_calories,
+                //     diet.price,
+                // );
             }
             Ok(SimResult::Final(step, processing_time, duration, stop_reason)) => {
                 let best_solution = step.result.best_solution;
