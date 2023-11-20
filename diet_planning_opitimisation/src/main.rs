@@ -124,7 +124,7 @@ impl<'a, 'b> FitnessFunction<Selection, i64> for &'b Problem<'a> {
             sum += nil
         }
 
-        sum - total_price
+        sum - total_price.pow(2) + (total_calories + total_carbs + total_fats + total_proteins) as i64
     }
 
     fn average(&self, values: &[i64]) -> i64 {
@@ -150,12 +150,13 @@ fn main() {
 
 fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64) {
     let problem = Problem::new(2250, 275, 50, 120, all_dishes);
+    let max_dish_count = 10;
 
     let initial_population: Population<Selection> = build_population()
         .with_genome_builder(ValueEncodedGenomeBuilder::new(
-            problem.all_dishes.len(), 0, 10,
+            problem.all_dishes.len(), 0, max_dish_count,
         ))
-        .of_size(50)
+        .of_size(15)
         .uniform_at_random();
 
     let mut diet_sim = simulate(
@@ -163,7 +164,7 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64)
             .with_evaluation(&problem)
             .with_selection(selector)
             .with_crossover(SinglePointCrossBreeder::new())
-            .with_mutation(RandomValueMutator::new(0.1, 0, 5))
+            .with_mutation(RandomValueMutator::new(0.1, 0, max_dish_count))
             .with_reinsertion(ElitistReinserter::new(&problem, false, 0.85))
             // .with_reinsertion(UniformReinserter::new(0.85))
             .with_initial_population(initial_population)
@@ -223,7 +224,7 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64)
                 //     diet.price,
                 // );
                 // println!("{:?}", diet.dishes.into_iter().map(|(dish, count)| (dish.name, count)).collect::<Vec<(String, u32)>>());
-                println!("fitness: {}", best_solution.solution.fitness);
+                println!("{}", best_solution.solution.fitness);
                 break 'sim;
             }
             Err(error) => {
