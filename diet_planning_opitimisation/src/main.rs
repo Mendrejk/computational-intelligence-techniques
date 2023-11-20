@@ -143,12 +143,23 @@ fn main() {
 
     let selector = DynamicSelector::new(GenevoSelector::Maximize(MaximizeSelector::new(0.85, 12)));
 
-    for generation_count in [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000] {
-        run(selector.clone(), &dishes, generation_count);
+    let gen_fitness_dishes: Vec<(u64, i64, usize)> = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 10000].into_iter().map(|generation_count| {
+        let i = 5;
+        let (fitness_sum, dish_count_sum) = (0..i)
+            .map(|_| {
+                run(selector.clone(), &dishes, generation_count)
+            })
+            .fold((0, 0), |(fitness_sum, dish_count_sum), (fitness, dish_count)| (fitness_sum + fitness, dish_count_sum + dish_count));
+
+        (generation_count, fitness_sum / i, dish_count_sum / i as usize)
+    }).collect();
+
+    for (generation, average_fitness, average_dishes) in gen_fitness_dishes {
+        println!("|{}|{}|{}|", generation, average_fitness, average_dishes)
     }
 }
 
-fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64) {
+fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64) -> (i64, usize) {
     let problem = Problem::new(2250, 275, 50, 120, all_dishes);
     let max_dish_count = 10;
 
@@ -172,6 +183,9 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64)
     )
         .until(GenerationLimit::new(generation_count))
         .build();
+
+    let mut fitness: i64 = 0;
+    let mut unique_dishes: usize = 0;
 
     'sim: loop {
         let result = diet_sim.step();
@@ -224,7 +238,9 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64)
                 //     diet.price,
                 // );
                 // println!("{:?}", diet.dishes.into_iter().map(|(dish, count)| (dish.name, count)).collect::<Vec<(String, u32)>>());
-                println!("{}", best_solution.solution.fitness);
+                fitness = best_solution.solution.fitness;
+                unique_dishes = best_solution.solution.genome.as_diet(problem.all_dishes).dishes.len();
+                // println!("fitness: {}, unique dishes: {}", fitness, unique_dishes);
                 break 'sim;
             }
             Err(error) => {
@@ -233,6 +249,8 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64)
             }
         }
     }
+
+    (fitness, unique_dishes)
 }
 
 fn get_dishes() -> Vec<Dish> {
