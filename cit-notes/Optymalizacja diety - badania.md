@@ -98,3 +98,46 @@ beginAtZero: true
 | -78 | 4 | 2023 | 290 | 50 |84 | 78 |
 | -99999999 | 13 | 7308 | 594 | 190 | 790 | 1114 |
 | -78 | 4 | 2023 | 290 | 50 | 84 | 78 |
+
+
+# Lista 2
+
+## Analiza metod selekcji - elitarna, ruletka, turniej
+Średnie funkcji celu z 5 iteracji
+
+### selekcja elitarna
+
+|1|-40000516908|12|
+
+| iteracja | fitness | unikalne dania |
+| -------- | ------- | -------------- |
+|10|-23005|8|
+|20|-15339|8|
+|30|-8927|6|
+|40|-7686|5|
+|50|-8096|6|
+|60|-9876|5|
+|70|-10333|5|
+|80|-6428|5|
+|90|-7312|5|
+|100|-8859|5|
+|200|-7704|5|
+|300|-6556|5|
+|400|-6514|5|
+|500|-6053|5|
+|600|-6209|4|
+|700|-6043|5|
+|800|-6467|5|
+|900|-6578|5|
+|1000|-6238|5|
+|10000|-6160|5|
+^selekcjaElitarna
+
+```chart
+type: line
+id: selekcjaElitarna
+layout: columns
+select: [fitness]
+width: 80%
+beginAtZero: true
+```
