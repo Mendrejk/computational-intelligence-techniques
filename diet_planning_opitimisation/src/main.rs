@@ -109,8 +109,8 @@ impl<'a, 'b> FitnessFunction<Selection, i64> for &'b Problem<'a> {
                 (total_calories + calories, total_carbs + carbs, total_fats + fats, total_proteins + proteins, total_price + price)
             });
 
-        let nil = -9999999999;
-        let mut sum: i64 = 0;
+        let nil = -99999;
+        let mut sum: i64 = 9999999;
         if total_calories.abs_diff(self.target_calories) > 200 {
             sum += nil;
         }
@@ -135,13 +135,15 @@ impl<'a, 'b> FitnessFunction<Selection, i64> for &'b Problem<'a> {
         0
     }
 
-    fn lowest_possible_fitness(&self) -> i64 { -99999999990 }
+    fn lowest_possible_fitness(&self) -> i64 { -9999999 }
 }
 
 fn main() {
     let dishes = get_dishes();
 
-    let selector = DynamicSelector::new(GenevoSelector::Maximize(MaximizeSelector::new(0.85, 12)));
+    // let selector = DynamicSelector::new(GenevoSelector::Maximize(MaximizeSelector::new(0.85, 12)));
+    // let selector = DynamicSelector::new(GenevoSelector::Roulette(RouletteWheelSelector::new(0.85, 12)));
+    let selector = DynamicSelector::new(GenevoSelector::Tournament(TournamentSelector::new(0.85, 12, 3, 1.0, false)));
 
     let gen_fitness_dishes: Vec<(u64, i64, usize)> = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 10000].into_iter().map(|generation_count| {
         let i = 5;
