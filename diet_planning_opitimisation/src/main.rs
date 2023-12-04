@@ -1,8 +1,10 @@
 mod dynamic_selector;
+mod inversion_mutator;
 
 use genevo::{operator::prelude::*, population::*, prelude::*};
 use smallvec::SmallVec;
 use crate::dynamic_selector::{GenevoSelector, DynamicSelector};
+use crate::inversion_mutator::InversionMutator;
 
 #[derive(Debug, Clone)]
 struct Dish {
@@ -27,7 +29,7 @@ struct Diet {
 }
 
 /// The genotype
-type Selection = SmallVec<[u32; 16]>;
+type Selection = Vec<u32>;
 
 /// How do the genes of the genotype show up in the phenotype
 trait AsPhenotype {
@@ -37,7 +39,7 @@ trait AsPhenotype {
 impl AsPhenotype for Selection {
     fn as_diet(&self, all_dishes: &[Dish]) -> Diet {
         let dishes: Vec<(Dish, u32)> = self
-            .into_iter()
+            .iter()
             .enumerate()
             .filter_map(|(index, dish_count)| {
                 if *dish_count > 0 {
@@ -157,7 +159,8 @@ fn main() {
     }).collect();
 
     for (generation, average_fitness, average_dishes) in gen_fitness_dishes {
-        println!("|{}|{}|{}|", generation, average_fitness, average_dishes)
+        // println!("|{}|{}|{}|", generation, average_fitness, average_dishes)
+        println!("{}", average_fitness - 9000000)
     }
 }
 
@@ -177,7 +180,7 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64)
             .with_evaluation(&problem)
             .with_selection(selector)
             .with_crossover(SinglePointCrossBreeder::new())
-            .with_mutation(RandomValueMutator::new(0.1, 0, max_dish_count))
+            .with_mutation(InversionMutator { mutation_rate: 0.1 })
             .with_reinsertion(ElitistReinserter::new(&problem, false, 0.85))
             // .with_reinsertion(UniformReinserter::new(0.85))
             .with_initial_population(initial_population)
