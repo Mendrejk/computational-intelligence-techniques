@@ -10,3 +10,5 @@ genevo = { version = "0.7", features = ["smallvec"] }
 smallvec = { version = "1.11.1", features = [] }
 rand = { version = "0.8.5", features = [] }
 plotters = "0.3.5"
+rayon = "1.8.0"
+plotly = "0.8.4"

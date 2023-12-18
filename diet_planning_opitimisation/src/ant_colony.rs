@@ -1,6 +1,7 @@
 use plotters::prelude::*;
-
+use rayon::prelude::*;
 use rand::Rng;
+use std::sync::Mutex;
 use crate::dish::{Dish, get_dishes};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -150,20 +151,16 @@ impl AntColony {
         let mut best_fitnesses = Vec::new();
         for _ in 0..iterations {
             self.reset_ants();
-            for ant in &mut self.ants {
+            self.ants.par_iter_mut().for_each(|ant| {
                 ant.construct_path(&self.dishes, &self.pheromone);
-            }
+            });
             self.update_pheromones();
             if let Some(best_ant) = self.ants.iter().max_by(|a, b| a.path_cost.partial_cmp(&b.path_cost).unwrap()) {
                 if self.best_ant.is_none() || best_ant.path_cost > self.best_ant.as_ref().unwrap().path_cost {
-                    if self.best_ant.is_some() {
-                        println!("{}, {}", self.best_ant.clone().unwrap().path_cost, best_ant.path_cost);
-                    }
                     self.best_path = best_ant.path.clone();
                     self.best_ant = Some(best_ant.clone());
                 }
             }
-            // println!("path_cst: {}", self.best_ant.as_ref().unwrap().path_cost);
             best_fitnesses.push(self.best_ant.as_ref().unwrap().path_cost);
         }
         best_fitnesses
@@ -171,10 +168,36 @@ impl AntColony {
 }
 
 pub fn ant_colony_algorithm() {
+    sample_run();
+
+    let dishes = get_dishes();
+    let results = Mutex::new(Vec::new());
+    let num_ants_values: Vec<usize> = (0..=10).map(|i| 5 * 2usize.pow(i)).collect();
+    num_ants_values.par_iter().for_each(|&num_ants| {
+        let num_iterations_values: Vec<usize> = (0..=10).map(|i| 5 * 2usize.pow(i)).collect();
+        num_iterations_values.par_iter().for_each(|&num_iterations| {
+            let mut ant_colony = AntColony::new(dishes.clone(), num_ants);
+            let best_fitnesses = ant_colony.run(num_iterations);
+            let best_fitness = *best_fitnesses.last().unwrap();
+            results.lock().unwrap().push((num_ants, num_iterations, best_fitness));
+        });
+    });
+
+    for (num_ants, num_iterations, best_fitness) in results.lock().unwrap().iter() {
+        println!("Number of ants: {}, Number of iterations: {}, Best fitness: {}", num_ants, num_iterations, best_fitness);
+    }
+
+    let results = results.lock().unwrap();
+
+    plot_for_each_num_ants(&results);
+    plot_for_each_num_iterations(&results);
+    plot_joint(&results);
+}
+
+fn sample_run() {
     let dishes = get_dishes();
     let mut ant_colony = AntColony::new(dishes, 1000);
-    let best_fitnesses = ant_colony.run(5000);
-    plot_best_fitness(&best_fitnesses);
+    ant_colony.run(5000);
     let best_path_names: Vec<String> = ant_colony.best_path
         .iter()
         .map(|dish_count| format!("dish: {}, count: {}", ant_colony.dishes[dish_count.dish].name, dish_count.count))
@@ -229,4 +252,85 @@ pub fn plot_best_fitness(best_fitnesses: &[f64]) {
         best_fitnesses.iter().enumerate().map(|(i, fitness)| (i as f64, *fitness)),
         &RED,
     )).unwrap();
+}
+
+fn plot_for_each_num_ants(results: &[(usize, usize, f64)]) {
+    let num_ants_values: Vec<usize> = (0..=10).map(|i| 5 * 2usize.pow(i)).collect();
+    for &num_ants in &num_ants_values {
+        let filename = format!("plot_for_{}_ants.png", num_ants);
+        let root = BitMapBackend::new(&filename, (640, 480)).into_drawing_area();
+        root.fill(&WHITE).unwrap();
+
+        let data: Vec<(f64, f64)> = results.iter()
+            .filter(|&&(na, _, _)| na == num_ants)
+            .map(|&(_, ni, bf)| (ni as f64, bf))
+            .collect();
+
+        let fitness_values: Vec<f64> = data.iter().map(|&(_, y)| y).collect();
+        let min_fitness = *fitness_values.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+        let max_fitness = *fitness_values.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+
+        let mut chart = ChartBuilder::on(&root)
+            .caption(format!("Best Fitness Over Generations for {} Ants", num_ants), ("sans-serif", 20).into_font())
+            .margin(25)
+            .x_label_area_size(30)
+            .y_label_area_size(30)
+            .build_cartesian_2d(0f64..(results.len() as f64) * 1.1, min_fitness*0.9..max_fitness*1.1)
+            .unwrap();
+
+        chart.configure_mesh().draw().unwrap();
+
+        chart.draw_series(LineSeries::new(data, &RED)).unwrap();
+    }
+}
+
+fn plot_for_each_num_iterations(results: &[(usize, usize, f64)]) {
+    let num_iterations_values: Vec<usize> = (0..=10).map(|i| 5 * 2usize.pow(i)).collect();
+    for &num_iterations in &num_iterations_values {
+        let filename = format!("plot_for_{}_iterations.png", num_iterations);
+        let root = BitMapBackend::new(&filename, (640, 480)).into_drawing_area();
+        root.fill(&WHITE).unwrap();
+
+        let mut chart = ChartBuilder::on(&root)
+            .caption(format!("Best Fitness Over Generations for {} Iterations", num_iterations), ("sans-serif", 20).into_font())
+            .margin(25)
+            .x_label_area_size(30)
+            .y_label_area_size(30)
+            .build_cartesian_2d(0f64..results.len() as f64, 0.0..1.0)
+            .unwrap();
+
+        chart.configure_mesh().draw().unwrap();
+
+        let data: Vec<(f64, f64)> = results.iter()
+            .filter(|&&(_, ni, _)| ni == num_iterations)
+            .map(|&(_, na, bf)| (na as f64, bf))
+            .collect();
+
+        chart.draw_series(LineSeries::new(data, &RED)).unwrap();
+    }
+}
+
+fn plot_joint(results: &[(usize, usize, f64)]) {
+    let filename = "joint_plot.png";
+    let root = BitMapBackend::new(&filename, (640, 480)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption("Best Fitness Over Generations", ("sans-serif", 20).into_font())
+        .margin(25)
+        .x_label_area_size(30)
+        .y_label_area_size(30)
+        .build_cartesian_2d(0f64..results.len() as f64, 0.0..1.0)
+        .unwrap();
+
+    chart.configure_mesh().draw().unwrap();
+
+    let data: Vec<(f64, f64)> = results.iter()
+        .filter(|&&(na, ni, _)| na == ni)
+        .map(|&(_, _, bf)| bf)
+        .enumerate()
+        .map(|(i, bf)| (i as f64, bf))
+        .collect();
+
+    chart.draw_series(LineSeries::new(data, &RED)).unwrap();
 }

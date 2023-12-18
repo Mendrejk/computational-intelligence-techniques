@@ -4,6 +4,7 @@ mod dish;
 mod genetic_algorithm;
 mod ant_colony;
 
+use rayon::ThreadPoolBuilder;
 use crate::ant_colony::{ant_colony_algorithm};
 
 fn main() {
