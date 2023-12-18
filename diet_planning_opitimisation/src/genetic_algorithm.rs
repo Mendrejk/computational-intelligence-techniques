@@ -222,7 +222,7 @@ fn run(selector: DynamicSelector, all_dishes: &Vec<Dish>, generation_count: u64)
     (fitness, unique_dishes)
 }
 
-pub fn algorithm()
+pub fn gen_algorithm()
 {
     let dishes = get_dishes();
 

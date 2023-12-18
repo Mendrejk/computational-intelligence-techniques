@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 genevo = { version = "0.7", features = ["smallvec"] }
 smallvec = { version = "1.11.1", features = [] }
+rand = { version = "0.8.5", features = [] }
+plotters = "0.3.5"

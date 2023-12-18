@@ -2,9 +2,12 @@ mod dynamic_selector;
 mod inversion_mutator;
 mod dish;
 mod genetic_algorithm;
+mod ant_colony;
 
-use crate::genetic_algorithm::algorithm;
+use crate::ant_colony::{ant_colony_algorithm};
 
 fn main() {
-    algorithm()
+    // gen_algorithm();
+
+    ant_colony_algorithm();
 }
